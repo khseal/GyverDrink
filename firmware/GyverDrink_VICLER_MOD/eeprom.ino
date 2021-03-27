@@ -21,7 +21,7 @@ void readEEPROM() {
   for (byte i = 0; i < NUM_SHOTS; i++) shotVolume[i] = thisVolume;
 
   EEPROM.get(eeAddress._time50ml, time50ml);  // чтение значения таймера для 50мл
-  volumeTick = 10.0f * 50.0f / time50ml;
+  ticks_ml = time50ml / 20.0 / 50.0;
 
   for (byte i = 0; i < NUM_SHOTS; i++) shotPos[i] = EEPROM.read(eeAddress._shotPos + i);  // чтение позиций серво над рюмками
 
@@ -66,9 +66,9 @@ void readEEPROM() {
 
   parameterList[keep_power] = EEPROM.read(eeAddress._keep_power); // функция пинания повербанка
 
-  parameterList[inverse_servo] = EEPROM.read(eeAddress._inverse_servo); // чтение установки инверсии серво
+  parameterList[motor_reverse] = EEPROM.read(eeAddress._motor_reverse); // чтение установки инверсии серво
 
-  parameterList[servo_speed] = EEPROM.read(eeAddress._servo_speed); // скорость сервопривода
+  parameterList[motor_speed] = EEPROM.read(eeAddress._motor_speed); // скорость сервопривода
 
   parameterList[auto_parking] = EEPROM.read(eeAddress._auto_parking); // чтение установки автопарковки в авторежиме
 
@@ -106,9 +106,9 @@ void resetEEPROM() {
 
   EEPROM.update(eeAddress._keep_power, KEEP_POWER); // сброс функции поддержания питания от повербанка
 
-  EEPROM.update(eeAddress._inverse_servo, INVERSE_SERVO); // сброс инверсии серво
+  EEPROM.update(eeAddress._motor_reverse, MOTOR_REVERSE); // сброс инверсии серво
 
-  EEPROM.update(eeAddress._servo_speed, SERVO_SPEED); // сброс скорости сервопривода
+  EEPROM.update(eeAddress._motor_speed, MOTOR_SPEED); // сброс скорости сервопривода
 
   EEPROM.update(eeAddress._auto_parking, AUTO_PARKING); // сброс установки автопарковки в авторежиме
 

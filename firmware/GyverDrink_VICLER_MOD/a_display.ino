@@ -42,7 +42,7 @@ byte err_vector[256] = {
 void printNum(uint16_t num, int8_t mode = 0) {
   static byte lastVal = 255;
   byte value = round(num * 255.0 / parameterList[max_volume]);
-  Serial.println(num);
+  //Serial.println(num);
 
   if ( (value == 0) && (lastVal > 0) ) {
     for (byte i = lastVal; i > 0; i--) {
@@ -145,7 +145,7 @@ const char *MenuPages[][9] = {
   },
 
   { "##### Сервис #####",
-    " Серво",
+    " Двигатель",
     " Помпа",
 #ifdef BATTERY_PIN
     " Аккумулятор",
@@ -236,9 +236,9 @@ void clearToEOL(const char ch = ' ') { // заполнение строки от
 
 void printStr(const char str[], int8_t x = Append, int8_t y = Append) { // вывод текста с возможностью выравнивания
   if (x == Left)    disp.setCol(0);
-  if (x == Center)  disp.setCol( (disp.displayWidth() - strWidth(str)) / 2);
-  if (x == Right)   disp.setCol(disp.displayWidth() - strWidth(str));
-  if (x != Append)  disp.setCol(x);
+  else if (x == Center)  disp.setCol( (disp.displayWidth() - strWidth(str)) / 2);
+  else if (x == Right)   disp.setCol(disp.displayWidth() - strWidth(str));
+  else if (x != Append)  disp.setCol(x);
 
   if (y != Append)  disp.setRow(y);
 
@@ -285,17 +285,17 @@ enum { ml = 1, deg }; // постфикс для вывода чисел бол�
 void printNum(uint16_t volume, int8_t postfix = 0) { //вывод чисел крупным шрифтом по центру с возможностью вывода дополнительного постфикса (мл или °)
   static uint16_t lastVol = 0; // переменная для сохранения последнего выводимого числа
   disp.setFont(BIG_NUM_FONT);
-  byte shiftY = 0;
+  static byte shiftY = 0;
 
   if (postfix == 1) shiftY = 1; // число объёма выводится на одну строку выше, чем градусы серво и напяжение аккумулятора
 
   // очистка первой цифры если число уменьшилось с 1000 до 999, 100 до 99 или с 10 до 9
   if (volume <= 999 && lastVol >= 1000) printStr("    ", Center, 3 - shiftY);
-  if (volume <= 99 && lastVol >= 100) {
+  else if (volume <= 99 && lastVol >= 100) {
     printStr(" ", Left, 3 - shiftY);
     printStr("  ", Right, 3 - shiftY);
   }
-  if ( (volume <= 9 && lastVol >= 10) || !timeoutState )
+  else if ( (volume <= 9 && lastVol >= 10) || !timeoutState )
     printStr("  ", Left, 3 - shiftY);
   lastVol = volume;
 
@@ -496,7 +496,7 @@ void displayMenu() { // вывод страниц меню
     }
     else if (menuPage == SERVO_CALIBRATION_PAGE) { // выбор елемента на странице настройки сервопривода
       if (menuItem == 1) { // выбрали первый пункт -> начало этапа калибровки серво
-        serviceRoutine(SERVO);
+        serviceRoutine(POSITION);
         lastMenuPage = NO_MENU;
       }
       else editParameter(menuItem - 2 + 8, selectedRow); // запускаем обработчик изменения параметра. -2 отступ (заголовок и первый пункт страницы). +8 начало параметров для сервисного меню в массиве parameterList
@@ -604,11 +604,11 @@ void displayMenu() { // вывод страниц меню
       clearToEOL();
       byte parameter = currItem - 2 + 8;
 #if(MENU_LANG == 0)
-      if ( (parameter == inverse_servo) || (parameter == auto_parking) ) {
+      if ( (parameter == motor_reverse) || (parameter == auto_parking) ) {
         if (parameterList[parameter] == 0) printStr("(", Right);
         else printStr(")", Right);
       }
-      if ( (parameter == servo_speed) || (parameter == keep_power) )
+      if ( (parameter == motor_speed) || (parameter == keep_power) )
         printInt(parameterList[parameter], Right);
 #else
       if (currItem > 1) printInt(parameterList[parameter], Right);

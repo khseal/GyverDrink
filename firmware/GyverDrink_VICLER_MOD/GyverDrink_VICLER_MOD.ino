@@ -1,6 +1,7 @@
 //GyverDrink VICLER_MOD
-#define VERSION 7.1
-//13.01.2021
+#define VERSION 7.4
+#define DISPLAY_VERSION 1
+//20.03.2021
 /*
   ==============================================================================================
   Модифицированная версия прошивки к проекту "Наливатор by AlexGyver" с расширенным функционалом
@@ -28,6 +29,7 @@
         4х символьный, 7-сегментный на контроллере TM1637.
         Подключение:  DIO -> 11
                       CLK -> 12
+   ⚫ Шаговый двигатель с драйвером типа StepStick (A4899, DRV8825, LV8729, TMC2100/2208/2209) или серво.
 
    ⚫ Прокачка. Поставьте рюмку, нажмите и удерживайте кнопку энкодера.
         Прокачка проводится только в ручном режиме и только при наличии рюмки.
@@ -116,7 +118,6 @@
 //╞══════════════════════════════════════════════════════════════════════════════╡LIBS╞══════════════════════════════════════════════════════════════════════════════╡
 
 //#define USE_TICOSERVO   // использование библиотеки Adafruit_TiCoServo вместо стандартной Servo. При использовании серводвигатель подключать к пину 9 или 10!
-
 #include "Config.h"
 #if (DISPLAY_TYPE < 2)
 #include "src/microWire/microWire.h"
@@ -129,8 +130,13 @@
 #elif (DISPLAY_TYPE == 3)
 #include "src/GyverTM1637/GyverTM1637.h"
 #endif
-
+#if (MOTOR_TYPE == 0)
 #include "src/ServoSmoothMinim.h"
+#elif (MOTOR_TYPE == 1)
+
+#include "src/GyverStepper.h"
+#include "src/GyverTimers/GyverTimers.h"
+#endif
 #include "src/microLED/microLED.h"
 #include "src/encUniversalMinim.h"
 #include "src/buttonMinim.h"
@@ -146,13 +152,17 @@
 #endif
 LEDdata leds[NUM_SHOTS + statusLed];                  // буфер ленты типа LEDdata
 microLED strip(leds, NUM_SHOTS + statusLed, LED_PIN); // объект лента
+#if (MOTOR_TYPE == 0)
 ServoSmoothMinim servo;
+#elif (MOTOR_TYPE == 1)
+GStepper<STEPPER2WIRE> stepper(STEPS_PER_REVOLUTION * MICROSTEPS, STEPPER_STEP, STEPPER_DIR, STEPPER_EN);
+#endif
 encMinim enc(ENC_CLK, ENC_DT, ENC_SW, ENCODER_DIR, ENCODER_TYPE); // пин clk, пин dt, пин sw, направление (0/1), тип (0/1)
 
 buttonMinim btn(BTN_PIN);
 buttonMinim encBtn(ENC_SW);
 timerMinim LEDtimer(30);
-timerMinim FLOWdebounce(10);
+timerMinim FLOWdebounce(20);
 timerMinim FLOWtimer(2000);
 timerMinim WAITtimer(500);
 timerMinim TIMEOUTtimer(TIMEOUT_STBY * 1000L); // таймаут режима ожидания
@@ -170,7 +180,7 @@ int8_t selectShot = -1;
 uint8_t shotCount = 0;
 enum { NO_GLASS, EMPTY, IN_PROCESS, READY } shotStates[NUM_SHOTS];
 enum { SEARCH, MOVING, WAIT, PUMPING } systemState;
-enum serviceStates { SERVO, VOLUME, BATTERY } serviceState;
+enum serviceStates { POSITION, VOLUME, BATTERY } serviceState;
 enum workModes { ManualMode, AutoMode } workMode;
 uint16_t time50ml = TIME_50ML;
 uint8_t thisVolume = INIT_VOLUME;
@@ -178,8 +188,9 @@ uint8_t shotVolume[NUM_SHOTS];
 uint8_t initShotPos[] = {SHOT_POSITIONS};
 uint8_t shotPos[] = {SHOT_POSITIONS};
 const byte SW_pins[] = {SW_PINS};
-float volumeTick = 10.0f * 50.0f / time50ml;
-float volumeCount = 0.0f;
+byte ticks_ml = time50ml / 20.0 / 50.0;  // time50ml / flowDebounce / 50ml. Количество тиков FlowDebounce за 1мл
+uint16_t flowDebounceTick = 0;
+uint8_t volumeCount = 0;
 bool systemON = false;
 bool timeoutState = false;
 bool parking = true;
@@ -218,8 +229,8 @@ enum
   oled_contrast,
   max_volume,
   // доступны из сервисного меню
-  inverse_servo,
-  servo_speed,
+  motor_reverse,
+  motor_speed,
   auto_parking,
   keep_power
 };
@@ -234,8 +245,8 @@ uint8_t parameterList[] = {
   OLED_CONTRAST,
   MAX_VOLUME,
   // доступны из сервисного меню
-  INVERSE_SERVO,
-  SERVO_SPEED,
+  MOTOR_REVERSE,
+  MOTOR_SPEED,
   AUTO_PARKING,
   KEEP_POWER
 };
@@ -255,9 +266,9 @@ struct EEPROMAddress
   const byte _timeout_off = _animCount + sizeof(animCount);
   const byte _stby_time = _timeout_off + sizeof(parameterList[timeout_off]);
   const byte _keep_power = _stby_time + sizeof(parameterList[stby_time]);
-  const byte _inverse_servo = _keep_power + sizeof(parameterList[keep_power]);
-  const byte _servo_speed = _inverse_servo + sizeof(parameterList[inverse_servo]);
-  const byte _auto_parking = _servo_speed + sizeof(parameterList[servo_speed]);
+  const byte _motor_reverse = _keep_power + sizeof(parameterList[keep_power]);
+  const byte _motor_speed = _motor_reverse + sizeof(parameterList[motor_reverse]);
+  const byte _auto_parking = _motor_speed + sizeof(parameterList[motor_speed]);
   const byte _max_volume = _auto_parking + sizeof(parameterList[auto_parking]);
   const byte _stby_light = _max_volume + sizeof(parameterList[max_volume]);
   const byte _rainbow_flow = _stby_light + sizeof(parameterList[stby_light]);
