@@ -821,7 +821,7 @@ void flowRoutine() {
     //    tStart = millis();
     flowDebounceTick++;
 
-    if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
+    //  if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
     //  volumeCount++;
     volumeCount = flowDebounceTick / (time50ml / 20.0 / 50.0);
       printNum(volumeCount, ml);
@@ -829,11 +829,11 @@ void flowRoutine() {
       //      tDiffMax = 0;
 
 #ifdef OLED
-      volume_session++;
+     // volume_session++; Тоже криво считает.
       displayVolumeSession();
       progressBar(volumeCount, shotVolume[curPumping]);
 #endif
-    }
+   // }
 
     strip.setLED(curPumping, mHSV(volumeColor[curPumping] + parameterList[leds_color], 255, 255));
     volumeColor[curPumping]++;
@@ -845,6 +845,7 @@ void flowRoutine() {
       shotStates[curPumping] = READY;                     // налитая рюмка, статус: готов
 #ifdef OLED
       shots_session++;
+      volume_session+= volumeCount;
       volume_overall += volumeCount;
       EEPROM.put(eeAddress._volume_overall, volume_overall);
 #endif
@@ -908,11 +909,11 @@ void prePump() {
     if (FLOWdebounce.isReady()) {
       flowDebounceTick++;
 
-      if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
+      // if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
       //  volumeCount++;
         volumeCount = flowDebounceTick / (time50ml / 20.0 / 50.0);
         printNum(volumeCount, ml);
-      }
+      // }
 
       strip.setLED(curPumping, mHSV(volumeColor[curPumping] + parameterList[leds_color], 255, 255));
       volumeColor[curPumping]++;
