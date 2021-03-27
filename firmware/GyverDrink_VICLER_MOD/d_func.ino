@@ -822,7 +822,8 @@ void flowRoutine() {
     flowDebounceTick++;
 
     if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
-      volumeCount++;
+    //  volumeCount++;
+    volumeCount = flowDebounceTick / (time50ml / 20.0 / 50.0);
       printNum(volumeCount, ml);
 
       //      tDiffMax = 0;
@@ -908,7 +909,8 @@ void prePump() {
       flowDebounceTick++;
 
       if (flowDebounceTick % ticks_ml == 0) { // ёмкость увеличилась на 1мл
-        volumeCount++;
+      //  volumeCount++;
+        volumeCount = flowDebounceTick / (time50ml / 20.0 / 50.0);
         printNum(volumeCount, ml);
       }
 
